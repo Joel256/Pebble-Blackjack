@@ -544,9 +544,18 @@ static void layer_update(Layer *layer, GContext *ctx) {
     // Dealer card area (y = 31, bottom at 80)
     // Card at index 1 is the hole card — rendered face-down until
     // s_hole_shown is set to true by player_stand() or player_hit(bust).
-    for (int i = 0; i < s_dn; i++) {
-        bool is_hole = (!s_hole_shown && i == 1);
-        draw_card(ctx, s_dealer[i], CARD_X + i * CARD_STEP, y, is_hole);
+    //
+    // Dynamic step: with many cards we compress the fan so every card
+    // stays on screen. Available width = SCREEN_W - CARD_X - CARD_W = 108 px.
+    // With n cards there are (n-1) gaps, so step = 108 / (n-1).
+    // Capped at CARD_STEP so normal 2-4 card hands are completely unchanged.
+    {
+        int dealer_gap  = (SCREEN_W - CARD_X - CARD_W) / (s_dn - 1);
+        int dealer_step = (s_dn > 1 && dealer_gap < CARD_STEP) ? dealer_gap : CARD_STEP;
+        for (int i = 0; i < s_dn; i++) {
+            bool is_hole = (!s_hole_shown && i == 1);
+            draw_card(ctx, s_dealer[i], CARD_X + i * dealer_step, y, is_hole);
+        }
     }
 
     y += CARD_H + 2;  // y = 82 (2 px gap below dealer cards)
@@ -575,8 +584,13 @@ static void layer_update(Layer *layer, GContext *ctx) {
     // Player card area (y = 100, bottom at 149)
     // All player cards are always face-up.
     // 149 → 2 px gap → 151 = start of BLACKJACK footer.
-    for (int i = 0; i < s_pn; i++) {
-        draw_card(ctx, s_player[i], CARD_X + i * CARD_STEP, y, false);
+    // Same dynamic step logic as the dealer area above.
+    {
+        int player_gap  = (SCREEN_W - CARD_X - CARD_W) / (s_pn - 1);
+        int player_step = (s_pn > 1 && player_gap < CARD_STEP) ? player_gap : CARD_STEP;
+        for (int i = 0; i < s_pn; i++) {
+            draw_card(ctx, s_player[i], CARD_X + i * player_step, y, false);
+        }
     }
 
     // vSTAY button hint — bottom-right corner, just above the footer.
