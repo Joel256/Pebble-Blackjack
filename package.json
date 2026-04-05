@@ -1,0 +1,62 @@
+{
+    "author": "Persistent Productions",
+    "dependencies": {},
+    "keywords": [],
+    "name": "blackjack",
+    "pebble": {
+        "displayName": "Blackjack",
+        "enableMultiJS": true,
+        "messageKeys": [],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/menu_image_21_heart.png",
+                    "menuIcon": true,
+                    "name": "MENU_IMAGE_21",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_club.png",
+                    "name": "SUIT_CLUB",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_diamond.png",
+                    "name": "SUIT_DIAMOND",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_heart.png",
+                    "name": "SUIT_HEART",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_spade.png",
+                    "name": "SUIT_SPADE",
+                    "targetPlatforms": null,
+                    "type": "bitmap"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite",
+            "emery",
+            "gabbro",
+            "flint"
+        ],
+        "uuid": "472f12f8-480a-46c9-8124-7acc608e3644",
+        "watchapp": {
+            "watchface": false
+        }
+    },
+    "version": "1.0.0"
+}
