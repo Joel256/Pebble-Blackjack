@@ -11,34 +11,105 @@
         "resources": {
             "media": [
                 {
-                    "file": "images/menu_image_21_heart.png",
+                    "file": "images/suit_diamond",
+                    "name": "SUIT_DIAMOND",
+                    "targetPlatforms": [
+                        "aplite",
+                        "diorite",
+                        "flint"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_spade",
+                    "name": "SUIT_SPADE",
+                    "targetPlatforms": [
+                        "aplite",
+                        "diorite",
+                        "flint"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_heart",
+                    "name": "SUIT_HEART",
+                    "targetPlatforms": [
+                        "aplite",
+                        "diorite",
+                        "flint"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_club",
+                    "name": "SUIT_CLUB",
+                    "targetPlatforms": [
+                        "aplite",
+                        "diorite",
+                        "flint"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_heart_color",
+                    "name": "SUIT_HEART_COLOR",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk",
+                        "emery",
+                        "gabbro"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/suit_diamond_color",
+                    "name": "SUIT_DIAMOND_COLOR",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk",
+                        "emery",
+                        "gabbro"
+                    ],
+                    "type": "bitmap"
+                },
+                {
+                    "file": "images/menu_image_21_heart",
                     "menuIcon": true,
                     "name": "MENU_IMAGE_21",
                     "targetPlatforms": null,
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/suit_club.png",
-                    "name": "SUIT_CLUB",
-                    "targetPlatforms": null,
+                    "file": "images/suit_club_color",
+                    "name": "SUIT_CLUB_COLOR",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk",
+                        "emery",
+                        "gabbro"
+                    ],
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/suit_diamond.png",
-                    "name": "SUIT_DIAMOND",
-                    "targetPlatforms": null,
+                    "file": "images/suit_spade_color",
+                    "name": "SUIT_SPADE_COLOR",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk",
+                        "emery",
+                        "gabbro"
+                    ],
                     "type": "bitmap"
                 },
                 {
-                    "file": "images/suit_heart.png",
-                    "name": "SUIT_HEART",
-                    "targetPlatforms": null,
-                    "type": "bitmap"
-                },
-                {
-                    "file": "images/suit_spade.png",
-                    "name": "SUIT_SPADE",
-                    "targetPlatforms": null,
+                    "file": "images/menu_image_21_heart_color",
+                    "name": "MENU_IMAGE_21_COLOR",
+                    "targetPlatforms": [
+                        "basalt",
+                        "chalk",
+                        "emery",
+                        "gabbro"
+                    ],
                     "type": "bitmap"
                 }
             ]
@@ -47,13 +118,11 @@
         "targetPlatforms": [
             "aplite",
             "basalt",
-            "chalk",
             "diorite",
             "emery",
-            "gabbro",
             "flint"
         ],
-        "uuid": "472f12f8-480a-46c9-8124-7acc608e3644",
+        "uuid": "ad18b90b-3f84-4347-85d9-533005bac20a",
         "watchapp": {
             "watchface": false
         }
