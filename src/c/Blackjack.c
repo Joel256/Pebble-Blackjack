@@ -9,7 +9,8 @@
 //
 //  GAME RULES
 //  ──────────
-//  · Single 52-card deck. Reshuffles silently when <15 cards remain.
+//  · Single 52-card deck. Reshuffled BETWEEN hands only (never mid-hand),
+//    when fewer than RESHUFFLE_AT cards remain in the shoe.
 //  · Dealer stands on ALL 17s (including soft 17).
 //  · Aces count as 11, drop to 1 to avoid a bust.
 //  · Natural blackjack (21 on exactly 2 cards) auto-stands.
@@ -32,13 +33,11 @@
 //
 //  RESOURCE REQUIREMENTS
 //  ─────────────────────
-//  All platforms:    suit_club.png   (20×20, black)   → SUIT_CLUB
-//                    suit_spade.png  (20×20, black)   → SUIT_SPADE
-//                    suit_heart.png  (20×20, black)   → SUIT_HEART
-//                    suit_diamond.png(20×20, black)   → SUIT_DIAMOND
-//  Colour platforms: suit_heart_red.png  (20×20, red) → SUIT_HEART_RED
-//                    suit_diamond_red.png(20×20, red) → SUIT_DIAMOND_RED
-//  All PNGs: solid white background, Memory Format = "Smallest Palette"
+//  B&W platforms:    suit_club / suit_spade / suit_heart / suit_diamond
+//                    (20×20, black on white, "Smallest Palette")
+//  Colour platforms: suit_club_color / suit_spade_color /
+//                    suit_heart_color / suit_diamond_color
+//                    (20×20, transparent background, "Smallest Palette")
 // ═════════════════════════════════════════════════════════
 
 #include <pebble.h>
@@ -140,8 +139,15 @@
 //  Game constants (platform-independent)
 // ─────────────────────────────────────────────────────────
 #define DECK_SIZE     52
-#define RESHUFFLE_AT  15
-#define MAX_HAND      11
+#define MAX_HAND      11   // maximum cards in one hand (player or dealer)
+
+// Reshuffle threshold — checked ONLY at the start of a hand.
+//
+// This must be at least 2 × MAX_HAND (= 22) so that a single hand can
+// never run the shoe dry, because a mid-hand reshuffle would return
+// cards already on the table back into the deck and allow the same
+// card to be dealt twice in one hand. 24 gives a small safety margin.
+#define RESHUFFLE_AT  24
 
 #define FIRST_MS      400
 #define DEAL_MS      1000
@@ -192,11 +198,10 @@ static Layer    *s_layer;
 static AppTimer *s_timer;
 
 // Suit bitmaps. Index 0=Clubs, 1=Diamonds, 2=Hearts, 3=Spades.
-// On colour platforms, indices 1 and 2 hold the red variants.
 static GBitmap *s_suit_bmp[4];
 
 static Card s_deck[DECK_SIZE];
-static int  s_deck_top;
+static int  s_deck_top;   // index of the next card to draw; 0 after a shuffle
 
 static Card s_player[MAX_HAND];  static int s_pn;
 static Card s_dealer[MAX_HAND];  static int s_dn;
@@ -225,6 +230,16 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 // ═════════════════════════════════════════════════════════
 //  DECK
+//
+//  IMPORTANT: deck_shuffle() rebuilds all 52 cards and resets the
+//  cursor to 0. It does NOT know which cards are currently sitting in
+//  the player's or dealer's hands, so calling it in the middle of a
+//  hand puts those cards back into the shoe and allows the same card
+//  to be dealt twice in one hand (the duplicate-ace bug).
+//
+//  For that reason the reshuffle check lives in start_hand(), never in
+//  deck_draw(). RESHUFFLE_AT is sized so a single hand can never
+//  exhaust the shoe between reshuffles.
 // ═════════════════════════════════════════════════════════
 
 static void deck_shuffle(void) {
@@ -232,15 +247,28 @@ static void deck_shuffle(void) {
         s_deck[i].rank = (i % 13) + 1;
         s_deck[i].suit = i / 13;
     }
+    // Fisher-Yates — unbiased in-place shuffle
     for (int i = DECK_SIZE - 1; i > 0; i--) {
         int j = rand() % (i + 1);
         Card tmp = s_deck[i]; s_deck[i] = s_deck[j]; s_deck[j] = tmp;
     }
     s_deck_top = 0;
+    APP_LOG(APP_LOG_LEVEL_INFO, "Deck shuffled");
 }
 
+// Number of cards still available in the current shoe.
+static int deck_remaining(void) {
+    return DECK_SIZE - s_deck_top;
+}
+
+// Draw the next card. Never reshuffles mid-hand — see note above.
+// The bounds guard is a last-resort safety net that should be
+// unreachable given the RESHUFFLE_AT sizing.
 static Card deck_draw(void) {
-    if (s_deck_top >= DECK_SIZE - RESHUFFLE_AT) deck_shuffle();
+    if (s_deck_top >= DECK_SIZE) {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Deck exhausted mid-hand — reshuffling");
+        deck_shuffle();
+    }
     return s_deck[s_deck_top++];
 }
 
@@ -315,8 +343,8 @@ static void draw_card(GContext *ctx, Card c, int x, int y, bool face_down) {
         GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
 
     // Suit bitmap — centred horizontally using platform-specific offsets.
-    // GCompOpSet: draws black/red bitmap pixels, treats white as transparent.
-    // This works whether the PNG background is white or transparent.
+    // GCompOpSet: draws black/red bitmap pixels, treats white/transparent
+    // as see-through so the card face shows behind the symbol.
     if (s_suit_bmp[c.suit]) {
         graphics_context_set_compositing_mode(ctx, GCompOpSet);
         graphics_draw_bitmap_in_rect(ctx, s_suit_bmp[c.suit],
@@ -345,10 +373,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
 #endif
 
     // Background and foreground colours.
-    // On colour platforms: casino felt green background, white text/lines.
-    // On B&W platforms:    white background, black text/lines.
-    // Cards always stay white with black content — they pop off the green.
-    // Clock bar and BLACKJACK footer keep their explicit black fills.
 #ifdef PBL_COLOR
     GColor bg_color = GColorDarkGreen;  // darkest casino-felt green (#005500)
     GColor fg_color = GColorWhite;
@@ -360,8 +384,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
     graphics_fill_rect(ctx, GRect(0, 0, SCREEN_W, SCREEN_H), 0, GCornerNone);
 
     // ── Clock bar (top) ───────────────────────────────────
-    // Black bar. Time is nudged to y=-5 so it sits visually centred
-    // in the bar with equal space above and below the digits.
     graphics_context_set_fill_color(ctx, GColorBlack);
     graphics_fill_rect(ctx, GRect(0, 0, SCREEN_W, TOP_BAR_H), 0, GCornerNone);
     graphics_context_set_text_color(ctx, GColorWhite);
@@ -376,8 +398,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
     }
 
     // ── BLACKJACK footer (bottom) ─────────────────────────
-    // Black bar. Text rect starts at the bar top (no +1 offset) so the
-    // label sits visually centred rather than pushed toward the bottom edge.
     graphics_context_set_fill_color(ctx, GColorBlack);
     graphics_fill_rect(ctx,
         GRect(0, SCREEN_H - BOT_BAR_H, SCREEN_W, BOT_BAR_H), 0, GCornerNone);
@@ -397,7 +417,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
             GTextOverflowModeWordWrap, GTextAlignmentCenter, NULL);
 
         // Four suit bitmaps centred horizontally below the title.
-        // Total bitmap row width = 4×20 + 3×8 = 104px → left margin = (SCREEN_W−104)/2
         int sx = (SCREEN_W - 104) / 2;
         int sy = title_y + LAUNCH_SY_OFF;
         for (int i = 0; i < 4; i++) {
@@ -409,8 +428,7 @@ static void layer_update(Layer *layer, GContext *ctx) {
             }
         }
 
-        // Prompt box. LAUNCH_BOX_X controls left/right margins — a smaller
-        // value gives a wider box so "PRESS ANY BUTTON" fits on one line.
+        // Prompt box
         int bx = LAUNCH_BOX_X;
         int bw = SCREEN_W - bx * 2;
         int by = sy + SUIT_SZ + LAUNCH_SY_GAP;
@@ -439,7 +457,7 @@ static void layer_update(Layer *layer, GContext *ctx) {
     GFont board_total = smb;
 #endif
 
-    // DEALER label — plain; bold total beside it stands out
+    // DEALER label
     graphics_context_set_text_color(ctx, fg_color);
     graphics_draw_text(ctx, "DEALER", board_label,
         GRect(CARD_X, y, 80, ROW_H + 4),
@@ -489,7 +507,7 @@ static void layer_update(Layer *layer, GContext *ctx) {
     graphics_draw_line(ctx, GPoint(0, y), GPoint(SCREEN_W - 1, y));
     y += 3;
 
-    // PLAYER label — plain; total bold (mirrors dealer row)
+    // PLAYER label
     graphics_context_set_text_color(ctx, fg_color);
     graphics_draw_text(ctx, "PLAYER", board_label,
         GRect(CARD_X, y, 80, ROW_H + 4),
@@ -523,7 +541,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
     }
 
     // ── Result overlay ────────────────────────────────────
-    // Hidden during board peek (SELECT held on result screen).
     if (s_state == STATE_RESULT && !s_board_peek) {
         const char *rs, *ps;
         switch (s_result) {
@@ -536,8 +553,6 @@ static void layer_update(Layer *layer, GContext *ctx) {
             default:                 rs = "";           ps = "";     break;
         }
 
-        // Box covers the full game area — starts 1px below the clock bar,
-        // ends 1px above the footer, so no game content bleeds through.
         int bx = 4;
         int by = TOP_BAR_H + 1;
         int bw = SCREEN_W - 8;
@@ -701,23 +716,25 @@ static void bust_cb(void *data) {
 // Dealer hits one card at a time. Checks the new total immediately
 // after drawing to avoid an extra-second pause after the final card.
 // Dealer stands on ALL 17s (including soft 17).
+// The MAX_HAND guard prevents overrunning the s_dealer[] array on the
+// pathological all-aces-and-twos hand.
 static void dealer_cb(void *data) {
     s_timer = NULL;
     int current = hand_val(s_dealer, s_dn);
     APP_LOG(APP_LOG_LEVEL_INFO, "dealer_cb: total=%d cards=%d", current, s_dn);
 
-    if (current < 17) {
+    if (current < 17 && s_dn < MAX_HAND) {
         s_dealer[s_dn++] = deck_draw();
         int new_total = hand_val(s_dealer, s_dn);
         APP_LOG(APP_LOG_LEVEL_INFO, "Dealer drew — new total=%d", new_total);
         layer_mark_dirty(s_layer);
-        if (new_total >= 17) {
+        if (new_total >= 17 || s_dn >= MAX_HAND) {
             s_timer = app_timer_register(DEALER_END_MS, dealer_done_cb, NULL);
         } else {
             s_timer = app_timer_register(DEAL_MS, dealer_cb, NULL);
         }
     } else {
-        APP_LOG(APP_LOG_LEVEL_INFO, "Dealer already at %d on reveal", current);
+        APP_LOG(APP_LOG_LEVEL_INFO, "Dealer standing at %d", current);
         game_evaluate();
     }
 }
@@ -786,9 +803,22 @@ static void deal_cb(void *data) {
     }
 }
 
+// Reset hand state and begin the opening deal.
+//
+// The reshuffle check lives HERE — between hands — so that a shuffle can
+// never return cards that are already on the table back into the shoe.
+// Doing this inside deck_draw() caused the same card to appear in both
+// the player's and the dealer's hand when a long hand crossed the
+// threshold mid-deal.
 static void start_hand(void) {
     if (s_timer) { app_timer_cancel(s_timer); s_timer = NULL; }
-    APP_LOG(APP_LOG_LEVEL_INFO, "--- New hand ---");
+    APP_LOG(APP_LOG_LEVEL_INFO, "--- New hand --- (%d cards left in shoe)",
+        deck_remaining());
+
+    if (deck_remaining() < RESHUFFLE_AT) {
+        deck_shuffle();
+    }
+
     s_pn           = 0;
     s_dn           = 0;
     s_hole_shown   = false;

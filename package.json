@@ -74,9 +74,12 @@
                 },
                 {
                     "file": "images/menu_image_21_heart",
-                    "menuIcon": true,
                     "name": "MENU_IMAGE_21",
-                    "targetPlatforms": null,
+                    "targetPlatforms": [
+                        "aplite",
+                        "diorite",
+                        "flint"
+                    ],
                     "type": "bitmap"
                 },
                 {
@@ -103,7 +106,8 @@
                 },
                 {
                     "file": "images/menu_image_21_heart_color",
-                    "name": "MENU_IMAGE_21_COLOR",
+                    "menuIcon": true,
+                    "name": "MENU_IMAGE_21",
                     "targetPlatforms": [
                         "basalt",
                         "chalk",
@@ -127,5 +131,5 @@
             "watchface": false
         }
     },
-    "version": "1.0.0"
+    "version": "2.0.0"
 }
